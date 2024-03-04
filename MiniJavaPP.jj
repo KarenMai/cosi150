@@ -1,0 +1,100 @@
+options {
+  IGNORE_CASE=false;
+}
+
+PARSER_BEGIN(MiniJavaPP)
+public class MiniJavaPP {
+
+  /** Main entry point. */
+  public static void main(String args[]) {
+    System.out.println("Reading from standard input...");
+    MiniJavaPP t = new MiniJavaPP(System.in);
+    try {
+      t.Start(0);
+      System.out.println("Thank you.");
+    } catch (Exception e) {
+      System.out.println("Oops.");
+      System.out.println(e.getMessage());
+      e.printStackTrace();
+    }
+  }
+}
+PARSER_END(MiniJavaPP)
+
+/* Lexical Tokens */
+TOKEN : {
+    <IDENTIFIER: (["a"-"z","A"-"Z"])(["a"-"z","A"-"Z","0"-"9","_"])*>
+    <LCURLY: "{" >
+    <MAIN: "main">
+    <LPAREN: "(" >
+    <LBRACKET: "[" >
+    <RBRACKET: "]" >
+    <RPAREN: ")" >
+    <RCURLY: "}" >
+    <SEMICOLON: ";" >ß
+}
+
+/* Program Syntax */
+
+void Start(int indent):
+{}
+{
+  MainClass(indent)
+  ClassDecls(indent)
+  <EOF>
+}
+
+void MainClass(int indent) :
+{Token s,t;}
+{
+  "class" 
+  t=<IDENTIFIER> 
+  <LCURLY>  
+      {System.out.println("class "+t.image+"{");}
+  "public" "static" "void" <MAIN> 
+      {System.out.print("    public static void main"); }
+  <LPAREN> "String" <LBRACKET> <RBRACKET> 
+  s=<IDENTIFIER> 
+  <RPAREN>
+      {System.out.println("(String[] "+s.image + "){");  }
+  <LCURLY> 
+  Statement(indent+1) 
+  <RCURLY>
+  <RCURLY>
+      {System.out.println("\n  }\n}\n"); }
+}
+
+void ClassDecls(int indent) :
+{}
+{
+    // Define rules for class declarations here
+    (
+      FieldDecl(indent)
+      | MethodDecl(indent)
+    )*
+}
+
+void Statement(int indent) :
+{}
+{
+    // Define rules for statements here
+    <IDENTIFIER> <SEMICOLON>
+}
+
+void FieldDecl(int indent) :
+{}
+{
+    Type() <IDENTIFIER> <SEMICOLON>
+}
+
+void MethodDecl(int indent) :
+{}
+{
+    Type() <IDENTIFIER> <LPAREN> <RPAREN> <LCURLY> <RCURLY>
+}
+
+void Type() :
+{}
+{
+    "int" | "boolean" | "void" | <IDENTIFIER>
+}
