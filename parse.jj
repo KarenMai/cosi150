@@ -1,0 +1,497 @@
+// Video: https://brandeis.zoom.us/rec/share/0ACQyrtlDQgGyf43yVLXEp67_QHRs3Qibm14DtQzIsSB41bb3cEqT4xQEqJDF1CV.q6WgJeLJQdjAtTWE 
+// Please see the second video, not the first one
+
+options {
+  IGNORE_CASE = false;
+}
+
+PARSER_BEGIN(parse)
+import java.io.*;
+public class parse
+{
+    public static void main(String args[]) throws ParseException 
+    {
+        System.out.println("Reading from standard input...");
+        parse t = new parse(System.in);
+        try {
+            t.parseProgram(0);
+            System.out.println("Thank you.");
+        } catch (Exception e) {
+            System.out.println("Oops.");
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}
+PARSER_END(parse)
+
+SKIP: /* Whitespace */
+{
+  "\t"
+| "\n"
+| "\r"
+| " "
+| <SINGLE_LINE_COMMENT: "//" (~["\n","\r"])* >
+| <MULTI_LINE_COMMENT: "/*" (~["*"] | "*" ~["/", "*"])* "*" "/" >
+}
+
+TOKEN:
+{
+   <CLASS: "class">
+  | <IF: "if">
+  | <ELSE: "else">
+  | <STRING: "String">
+  | <PUBLIC: "public">
+  | <STATIC: "static">
+  | <VOID: "void">
+  | <MAIN: "main">
+  | <THIS: "this">
+  | <PRINT: "System.out.println">
+  | <PERIOD: ".">
+  | <WHILE: "while">
+  | <EXTENDS: "extends">
+  | <BOOLEAN: "boolean">
+  | <TRUE: "true">
+  | <FALSE: "false">
+  | <INT: "int">
+  | <LENGTH: "length">
+  | <INT_ARRAY: "int[]">
+  | <NEW: "new">
+  | <NOT: "!">
+  | <EQUALS: "=">
+  | <COMMA: ",">
+  | <RETURN: "return">
+  | <IDENTIFIER: (["a"-"z", "A"-"Z"])+ (["a"-"z", "A"-"Z", "0"-"9", "_"])*>
+  | <LPAREN: "(">
+  | <RPAREN: ")">
+  | <OPERATOR: "&&" | "<" | "+" | "-" | "*">
+  | <MINUS: "-">
+  | <ADD: "+">
+  | <MULTIPLY: "*">
+  | <DIVIDE: "/">
+  | <INTEGER_LITERAL: (["0"-"9"])+>
+  | <LBRACKET: "[">
+  | <RBRACKET: "]">
+  | <LCBRACKET: "{">
+  | <RCBRACKET: "}">
+  | <SEMICOLON: ";">
+  | <LESS_THAN: "<">
+  | <MORE_THAN: ">">
+  | <AND: "&&">
+  | <OR: "||">
+}
+
+
+void parseProgram(int indent):
+{}
+{
+    parseMainClass(indent) (parseClassDeclarations(indent)) 
+    <EOF>
+}
+
+void parseMainClass(int indent):
+{Token s,t;}
+{
+    <CLASS>
+    t=<IDENTIFIER>
+    <LCBRACKET> 
+    {System.out.println("class "+t.image+"{");}
+    <PUBLIC><STATIC><VOID><MAIN>
+    {System.out.print("    public static void main"); }
+    <LPAREN><STRING><LBRACKET><RBRACKET>
+    s=<IDENTIFIER>
+    <RPAREN>
+    {System.out.println("(String[] "+s.image + "){");  }
+    <LCBRACKET>parseStatements(indent+2) <RCBRACKET><RCBRACKET>
+    {System.out.print("  }\n}\n"); }
+}
+
+void parseClassDeclarations(int indent):
+{}
+{
+  (parseClassDeclaration(indent))*
+}
+
+void parseClassDeclaration(int indent):
+{Token t,s;
+String a,b;}
+{ 
+    <CLASS>
+    t =<IDENTIFIER>
+    {System.out.print("class "+t.image);}
+    (<EXTENDS>
+    s=<IDENTIFIER>
+    {System.out.print(" extends "+s.image);}
+    )?
+    <LCBRACKET>
+    {System.out.print("{");}
+
+    a=parseVariableDeclarations(indent+1)
+    {System.out.println(a);}
+    parseMethodDeclarations(indent+1) 
+    <RCBRACKET>
+    {System.out.println("}");}
+}
+
+String parseVariableDeclarations(int indent):
+{String a,b;}
+{ LOOKAHEAD(3)
+  a=parseVariableDeclaration(indent) b=parseVariableDeclarations(indent)
+    {return (a+b);}
+  |
+  {} {return("");}
+}
+
+String parseVariableDeclaration(int indent):
+{Token t;
+String a;}
+{
+    a = parseType() 
+    t=<IDENTIFIER> <SEMICOLON>
+    {return String.format("\n%1$"+4*indent+"s","") + a + " " + t.image+";";}
+}
+
+void parseMethodDeclarations(int indent):
+{}
+{
+    LOOKAHEAD(3)
+    (parseMethodDeclaration(indent))* parseVariableDeclarations(indent)
+    |
+    {}
+}
+
+void parseMethodDeclaration(int indent):
+{ String s,t;
+String v ="";
+Token a;}
+{
+
+ <PUBLIC> 
+ t = parseType() 
+ a=<IDENTIFIER> 
+ <LPAREN>
+ s=parseFormalList() 
+ {System.out.format("%1$"+4*indent+"s", "");}
+ {System.out.print("public "+t+" " + a.image + "(" + s+ ")" + "{");}
+
+ <RPAREN><LCBRACKET>
+ v = parseVariableDeclarations(indent+1)
+  {System.out.println(v);}
+  (parseStatement(indent+1))* 
+  
+  <RETURN> 
+  {System.out.format("%1$"+4*(indent+1)+"s", "");}
+  {System.out.print("return ");}
+  parseExpression() 
+  <SEMICOLON> 
+  {System.out.print(";");}
+  <RCBRACKET>
+  {System.out.println("");}
+  {System.out.format("%1$"+4*indent+"s", "");}
+  {System.out.println("}");}
+
+}
+
+String parseFormalList():
+{Token a;
+String b,c;}
+{
+    c= parseType() a=<IDENTIFIER> b=parseFormalRests()
+    {return(c+" " + a + b);}
+    |
+    {}{return("");}
+}
+
+String parseFormalRests():
+{String a,b;}
+{ LOOKAHEAD(3)
+  a=parseFormalRest() b=parseFormalRests()
+    {return (a+b);}
+  |
+  {} {return("");}
+}
+
+
+String parseFormalRest():
+{String a;
+Token b;}
+{
+  <COMMA> 
+  a=parseType() 
+  b=<IDENTIFIER>
+  {return (", "+a+" " +b.image);}
+}
+
+String parseType():
+{ Token t; }
+{ 
+  (
+    t = <INT_ARRAY>
+    |
+    t = <BOOLEAN>
+    |
+    t = <INT>
+    |
+    t = <IDENTIFIER>
+  )
+  { return t.image; }
+}
+
+void parseStatements(int indent):
+{}
+{
+  (parseStatement(indent))*
+}
+
+void parseStatement(int indent):
+{ Token t; }
+{
+  (
+    <LCBRACKET>
+      {System.out.println("{");}
+      parseStatements(indent)
+      {System.out.println("");}
+      {System.out.format("%1$"+4*(indent-1)+"s", "");}
+      {System.out.print("}");}
+      <RCBRACKET> 
+  |
+  <IF>
+  <LPAREN>
+  {System.out.format("%1$"+4*indent+"s", "");}
+    {System.out.print("if (");}
+  parseExpression()
+  <RPAREN>
+    {System.out.print(")");}
+  parseStatement(indent+1)
+  {System.out.println("");}
+  <ELSE>
+    {System.out.format("%1$"+4*indent+"s", "");}
+    {System.out.print("else");}
+  parseStatement(indent+1)
+    {System.out.println();}
+  |
+  <WHILE> <LPAREN>
+  {System.out.format("%1$"+4*indent+"s", "");}
+    {System.out.print("while (");}
+  parseExpression() 
+  <RPAREN>
+  {System.out.print(")");}
+  parseStatement(indent+1)
+    {System.out.println();}
+  |
+  <PRINT><LPAREN>
+  {System.out.format("%1$"+4*indent+"s", "");}
+    {System.out.print("System.out.println(");}
+    parseExpression()
+  <RPAREN><SEMICOLON>
+    {System.out.print(");");}
+    {System.out.println();}
+    
+  |
+  LOOKAHEAD(2) t = <IDENTIFIER><EQUALS> 
+  {System.out.format("%1$"+4*indent+"s", "");}
+    {System.out.print(t.image+"=");}
+    parseExpression() <SEMICOLON>
+    {System.out.print(";");}
+    {System.out.println();}
+  |
+  LOOKAHEAD(2) t=<IDENTIFIER><LBRACKET>
+  {System.out.format("%1$"+4*indent+"s", "");}
+    {System.out.print(t.image+"[");}
+  parseExpression()
+  <RBRACKET> <EQUALS> 
+    {System.out.print("]=");}
+  parseExpression() 
+    {System.out.print(";");}
+    <SEMICOLON>
+
+
+  )
+}
+
+void parseExpression():
+{}
+{
+  parseLogicalExpression()
+}
+
+void parseLogicalExpression():
+{}
+{
+  parseRelationalExpression()  parseLogicalExpressionHelper()
+}
+
+void parseLogicalExpressionHelper():
+{}
+{
+  <AND> 
+  {System.out.print("&&");}
+  parseRelationalExpression() 
+  parseLogicalExpressionHelper() 
+  
+  |
+  {}
+}
+
+void parseRelationalExpression():
+{}
+{
+  parseAdditiveExpression() parseRelationalExpressionHelper()
+}
+
+void parseRelationalExpressionHelper():
+{}
+{
+  <LESS_THAN> 
+  {System.out.print("<");}
+  parseAdditiveExpression() 
+   parseRelationalExpressionHelper()
+ 
+  |
+  {}
+}
+
+void parseAdditiveExpression():
+{}
+{
+  parseMultiplicativeExpression() parseAdditiveExpressionHelper()
+}
+
+void parseAdditiveExpressionHelper():
+{}
+{
+  <ADD> 
+  {System.out.print("+");}
+  parseMultiplicativeExpression() 
+  parseAdditiveExpressionHelper()
+  
+  |
+  <MINUS> 
+  {System.out.print("-");}parseMultiplicativeExpression() 
+  parseAdditiveExpressionHelper()
+  |
+  {}
+}
+
+void parseMultiplicativeExpression():
+{}
+{
+  parseUnaryExpression() parseMultiplicativeExpressionHelper()
+}
+
+void parseMultiplicativeExpressionHelper():
+{}
+{
+  <MULTIPLY> 
+  {System.out.print("*");}
+  parseUnaryExpression() 
+  parseMultiplicativeExpressionHelper()
+  
+  |
+  {}
+}
+
+void parseUnaryExpression():
+{}
+{
+  parsePrimaryExpression() parseUnaryExpressionHelper()
+}
+
+void parseUnaryExpressionHelper():
+{}
+{
+  <NOT> 
+  {System.out.print("!");}
+  parsePrimaryExpression() 
+  parseUnaryExpressionHelper()
+  
+  |
+  {}
+}
+
+void parsePrimaryExpression():
+{ Token t;}
+{
+  (
+    t = <INTEGER_LITERAL> 
+    {System.out.print(t.image);}
+    parseExpression()
+    
+    |
+    t = <TRUE> 
+    {System.out.print("true");}
+    parseExpression()
+    
+    |
+    t = <FALSE> 
+    {System.out.print("false");}
+    parseExpression()
+    
+    |
+    t = <IDENTIFIER> 
+    {System.out.print(t.image);}
+    parseExpression()
+    
+    |
+    t = <THIS> 
+    {System.out.print("this");}
+    parseExpression()
+    
+    |
+    LOOKAHEAD(2) <NEW>t=<IDENTIFIER><LPAREN>
+    {System.out.print("new "+t.image+"()");}
+    <RPAREN> parseExpressionHelper() parseExpression()
+
+    |
+    LOOKAHEAD(2) t =<NEW><INT><LBRACKET>
+    {System.out.print("new int [");}
+     parseExpression()<RBRACKET> parseExpressionHelper() parseExpression()
+     {System.out.print("]");}
+    | 
+    t = <LPAREN>
+    {System.out.print("(");}
+    parseExpression()<RPAREN> 
+    {System.out.print(")");}parseExpressionHelper() parseExpression() 
+    | 
+    parseExpressionHelper()
+  )
+}
+
+void parseExpressionHelper():
+{ Token t; }
+{
+  (
+ t=<OPERATOR> parseExpression() parseExpressionHelper()
+ |
+  t=<LBRACKET>
+  {System.out.print("[");}
+  parseExpression()<RBRACKET> 
+  {System.out.print("]");}
+  parseExpressionHelper()
+  |
+  LOOKAHEAD(2) t=<PERIOD> <LENGTH> 
+  {System.out.print(".length");}
+  parseExpressionHelper()
+  |
+  LOOKAHEAD(2) <PERIOD> t=<IDENTIFIER><LPAREN> 
+  {System.out.print("."+t.image+"(");}
+  parseExpressionList() 
+  {System.out.print(")");}<RPAREN> 
+  parseExpressionHelper()
+  |
+  {}
+  )
+}
+
+void parseExpressionList():
+{}
+{
+  parseExpression() (parseExpressionRest())*
+}
+
+void parseExpressionRest():
+{}
+{
+  <COMMA> 
+  {System.out.print(", ");}parseExpression()
+}
